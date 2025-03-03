@@ -1,47 +1,110 @@
-# dataIntegrityPipelineCpp
+# Redis Pipelining Benchmark
 
-Data Integrity Tester for Redis
-This project provides a C++ application that tests data integrity for a single Redis server. The application issues pipelined SET and GET commands using multiple threads and maintains an in-memory key–value store. It verifies that data stored on Redis matches the expected value stored in memory.
+## Overview
 
-Features
-Pipelining: Sends batches of commands to Redis to improve performance.
-Data Integrity Checks: For each GET command, compares the Redis response with the expected value.
-Multi-threading: Uses multiple threads (connections) to simulate concurrent load.
-Detailed Debug Output: On any failure (invalid reply, data mismatch, etc.), prints both the Redis response and the expected value.
-Iteration Progress: Prints the iteration counter to stdout for easy progress tracking.
-Prerequisites
-Ubuntu Focal OS (or any similar Linux distribution)
-hiredis library: Install it with:
-bash
-Copy
-sudo apt-get update
-sudo apt-get install libhiredis-dev
-C++11 Compiler: e.g., g++.
-Compilation
-Save the source code into a file (e.g., dataIntegrity.cpp). Then compile using g++ with C++11 support and link against hiredis and pthread libraries:
+This utility provides a high-performance, thread-safe benchmarking tool for evaluating Redis server performance under various workload conditions with a focus on pipelined operations. The implementation leverages C++11 threading primitives and the hiredis client library to simulate concurrent workloads with configurable read/write ratios and pipeline depths.
 
-bash
-Copy
-g++ -std=c++11 dataIntegrity.cpp -o dataIntegrity -lhiredis -pthread
-Usage
-Run the compiled binary with the following parameters:
+## Technical Architecture
 
-bash
-Copy
-./dataIntegrity <redis_host:port> <pipeline_depth> <num_connections> <total_requests> <write_ratio> <iterations>
-Parameters:
+The benchmark implements a multi-threaded client that:
 
-<redis_host:port>: Redis server address (e.g., 127.0.0.1:6379).
-<pipeline_depth>: Number of commands to send in one pipelined batch.
-<num_connections>: Number of worker threads (each with its own Redis connection).
-<total_requests>: Total number of requests to process.
-<write_ratio>: Fraction of requests that should be writes (e.g., 0.5 for 50% writes).
-<iterations>: Number of iterations for the test. The iteration counter is printed to stdout.
-Example:
+1. Establishes multiple concurrent connections to a Redis instance
+2. Executes parameterized workloads using Redis pipelining
+3. Maintains an in-memory verification store to validate data integrity
+4. Provides detailed error reporting with command-specific context
 
-bash
-Copy
-./dataIntegrity 127.0.0.1:6379 10 2 1000 0.5 5
-License
-This project is provided as-is without any warranty. Modify and use it as needed for your testing or development purposes.
+## Key Features
 
+- **Configurable Pipeline Depth**: Optimizes Redis network utilization by batching multiple commands before requiring responses
+- **Concurrent Connection Simulation**: Utilizes C++11 thread management to simulate multiple clients
+- **Parameterized Workload Generation**: Configurable read/write ratios to simulate various application patterns
+- **Data Consistency Verification**: Maintains local state to verify Redis responses against expected values
+- **Thread-Safe Diagnostics**: Synchronized error reporting with contextual command information
+- **Iteration-Based Execution**: Support for multi-phase benchmark execution
+
+## Dependencies
+
+- C++11 or higher compiler support
+- hiredis library (Redis C client)
+- Standard Template Library (STL)
+
+## Compilation
+
+```bash
+g++ -std=c++11 -o redis_benchmark redis_benchmark.cpp -lhiredis -pthread
+```
+
+## Usage
+
+```
+./redis_benchmark <redis_host:port> <pipeline_depth> <num_connections> <total_requests> <write_ratio> <iterations>
+```
+
+### Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `redis_host:port` | Redis server address (e.g., "127.0.0.1:6379") |
+| `pipeline_depth` | Number of commands to batch in a single pipeline (1-n) |
+| `num_connections` | Number of concurrent client connections |
+| `total_requests` | Total number of operations to perform |
+| `write_ratio` | Proportion of write operations (0.0-1.0) |
+| `iterations` | Number of benchmark phases to execute |
+
+## Implementation Details
+
+### Command Pipelining
+
+The benchmark leverages Redis pipelining to reduce network round-trip latency by:
+1. Queuing multiple commands with `redisAppendCommand()`
+2. Flushing the TCP buffer implicitly when reading responses
+3. Processing responses in order with `redisGetReply()`
+
+### Thread Synchronization
+
+Thread safety is maintained through:
+- A global mutex (`printMutex`) for synchronized console output
+- Thread-local connection contexts and in-memory stores
+- Immutable thread configuration parameters
+
+### Memory Management
+
+The implementation manages memory through:
+- RAII principles for C++ resources
+- Explicit freeing of Redis replies via `freeReplyObject()`
+- Connection cleanup with `redisFree()`
+
+### Workload Generation
+
+Each thread maintains its own workload pattern:
+- Deterministic distribution of read/write operations based on configured ratio
+- Unique key generation using high-resolution timestamps and random values
+- Forced write operations when the in-memory store is empty
+
+## Error Handling
+
+The benchmark provides detailed error reporting for:
+- Connection failures
+- Command execution errors
+- Data integrity violations (value mismatches)
+- Invalid response types
+
+## Performance Considerations
+
+- **Optimal Pipeline Depth**: Vary pipeline depth to find the optimal value for your network conditions
+- **Connection Count**: Tune the number of connections based on Redis server capacity
+- **Write Ratio Impact**: Higher write ratios typically result in lower throughput
+- **Memory Pressure**: Be aware that the in-memory verification store grows proportionally with unique keys
+
+## Example
+
+```bash
+./redis_benchmark 127.0.0.1:6379 100 4 1000000 0.3 5
+```
+
+This command benchmarks a Redis server at 127.0.0.1:6379 with:
+- 100 commands per pipeline
+- 4 concurrent connections
+- 1,000,000 total operations
+- 30% write operations (70% reads)
+- 5 iterations of the benchmark
