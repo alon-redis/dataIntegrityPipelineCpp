@@ -28,16 +28,22 @@ The benchmark implements a multi-threaded client that:
 - hiredis library (Redis C client)
 - Standard Template Library (STL)
 
+## Prerequisites
+```bash
+sudo apt-get update
+sudo apt-get install libhiredis-dev g++
+```
+
 ## Compilation
 
 ```bash
-g++ -std=c++11 -o redis_benchmark redis_benchmark.cpp -lhiredis -pthread
+g++ -std=c++11 -o dataIntegrity dataIntegrity.cpp -lhiredis -pthread
 ```
 
 ## Usage
 
 ```
-./redis_benchmark <redis_host:port> <pipeline_depth> <num_connections> <total_requests> <write_ratio> <iterations>
+./dataIntegrity <redis_host:port> <pipeline_depth> <num_connections> <total_requests> <write_ratio> <iterations>
 ```
 
 ### Parameters
@@ -99,7 +105,7 @@ The benchmark provides detailed error reporting for:
 ## Example
 
 ```bash
-./redis_benchmark 127.0.0.1:6379 100 4 1000000 0.3 5
+./dataIntegrity 127.0.0.1:6379 100 4 1000000 0.3 5
 ```
 
 This command benchmarks a Redis server at 127.0.0.1:6379 with:
