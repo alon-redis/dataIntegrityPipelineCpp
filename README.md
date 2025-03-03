@@ -1,4 +1,4 @@
-# Redis Pipelining Benchmark
+# Redis Pipelining Data Integrity Tool
 
 ## Overview
 
